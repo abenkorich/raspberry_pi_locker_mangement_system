@@ -155,10 +155,10 @@ function generateCode() {
 }
 
 function saveLockerConfig() {
-    const id = document.getElementById('lockerId').value;
+    const id = document.getElementById('lockerId').value || null;
     const row = parseInt(document.getElementById('lockerRow').value);
     const column = parseInt(document.getElementById('lockerColumn').value);
-    const gpioPin = parseInt(document.getElementById('gpioPin').value);
+    const gpioPin = parseInt(document.getElementById('gpioPin').value) || null;
     const unlockCode = document.getElementById('unlockCode').value;
     
     fetch('/api/locker/configure', {
@@ -167,7 +167,7 @@ function saveLockerConfig() {
             'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-            id: id || undefined,
+            id: id,
             row,
             column,
             gpio_pin: gpioPin,
@@ -177,22 +177,29 @@ function saveLockerConfig() {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            const existingLocker = lockers.find(l => l.row === row && l.column === column);
-            if (existingLocker) {
-                existingLocker.gpio_pin = gpioPin;
-                existingLocker.unlock_code = data.unlock_code;
+            const existingLockerIndex = lockers.findIndex(l => l.row === row && l.column === column);
+            const updatedLocker = {
+                id: data.id,
+                row: row,
+                column: column,
+                gpio_pin: gpioPin,
+                unlock_code: data.unlock_code
+            };
+            
+            if (existingLockerIndex !== -1) {
+                lockers[existingLockerIndex] = updatedLocker;
             } else {
-                lockers.push({
-                    id: id,
-                    row: row,
-                    column: column,
-                    gpio_pin: gpioPin,
-                    unlock_code: data.unlock_code
-                });
+                lockers.push(updatedLocker);
             }
             renderLockerGrid();
             lockerModal.hide();
+        } else {
+            alert(data.message || 'Failed to save locker configuration');
         }
+    })
+    .catch(error => {
+        alert('An error occurred while saving the configuration');
+        console.error(error);
     });
 }
 </script>

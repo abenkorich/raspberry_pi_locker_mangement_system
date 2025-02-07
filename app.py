@@ -90,30 +90,48 @@ def configure():
 @login_required
 def configure_locker():
     data = request.json
-    locker = Locker.query.get(data['id'])
     
-    if not locker:
-        locker = Locker(
+    if data.get('id'):  # Update existing locker
+        locker = Locker.query.get(data['id'])
+        if not locker:
+            return jsonify({'success': False, 'message': 'Locker not found'})
+    else:  # Create new locker
+        # Check if a locker already exists at this position
+        existing_locker = Locker.query.filter_by(
             row=data['row'],
             column=data['column']
-        )
-        db.session.add(locker)
+        ).first()
+        
+        if existing_locker:
+            locker = existing_locker
+        else:
+            locker = Locker(
+                row=data['row'],
+                column=data['column']
+            )
+            db.session.add(locker)
     
     if 'gpio_pin' in data:
         if locker.gpio_pin in active_pins:
             active_pins.remove(locker.gpio_pin)
         locker.gpio_pin = data['gpio_pin']
-        active_pins.append(data['gpio_pin'])
-        setup_gpio()
+        if data['gpio_pin']:  # Only add to active_pins if a pin is actually set
+            active_pins.append(data['gpio_pin'])
+            setup_gpio()
     
     if 'generate_code' in data and data['generate_code']:
         locker.unlock_code = generate_unlock_code()
     
-    db.session.commit()
-    return jsonify({
-        'success': True,
-        'unlock_code': locker.unlock_code
-    })
+    try:
+        db.session.commit()
+        return jsonify({
+            'success': True,
+            'unlock_code': locker.unlock_code,
+            'id': locker.id
+        })
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'success': False, 'message': str(e)})
 
 if __name__ == '__main__':
     with app.app_context():
