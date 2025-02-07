@@ -24,7 +24,9 @@ sudo apt-get install -y \
 # Create project directory
 echo "Setting up project directory..."
 PROJECT_DIR="/home/pi/rpi-locker-mgmt"
-mkdir -p $PROJECT_DIR
+if [ ! -d "$PROJECT_DIR" ]; then
+    sudo mkdir -p $PROJECT_DIR
+fi
 cd $PROJECT_DIR
 
 # Clone repository if not exists
