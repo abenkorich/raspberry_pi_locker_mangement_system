@@ -1,0 +1,199 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-12">
+        <h2>Admin Panel</h2>
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3>Locker Configuration</h3>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label for="rows" class="form-label">Number of Rows</label>
+                        <input type="number" class="form-control" id="rows" value="{{ config.rows }}" min="1" max="10">
+                    </div>
+                    <div class="col-md-6">
+                        <label for="columns" class="form-label">Number of Columns</label>
+                        <input type="number" class="form-control" id="columns" value="{{ config.columns }}" min="1" max="10">
+                    </div>
+                </div>
+                <button class="btn btn-primary" onclick="updateConfiguration()">Update Configuration</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h3>Locker Matrix</h3>
+            </div>
+            <div class="card-body">
+                <div id="lockerGrid" class="locker-grid"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Locker Configuration Modal -->
+<div class="modal fade" id="lockerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Configure Locker</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="lockerForm">
+                        <input type="hidden" id="lockerId">
+                        <input type="hidden" id="lockerRow">
+                        <input type="hidden" id="lockerColumn">
+                        
+                        <div class="mb-3">
+                            <label for="gpioPin" class="form-label">GPIO Pin</label>
+                            <select class="form-control" id="gpioPin">
+                                <option value="">Select GPIO Pin</option>
+                                {% for pin in range(2, 28) %}
+                                <option value="{{ pin }}">GPIO {{ pin }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Unlock Code</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="unlockCode" readonly>
+                                <button type="button" class="btn btn-secondary" onclick="generateCode()">Generate</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="saveLockerConfig()">Save</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let lockers = {{ lockers|tojson|safe }};
+let lockerModal;
+
+document.addEventListener('DOMContentLoaded', function() {
+    lockerModal = new bootstrap.Modal(document.getElementById('lockerModal'));
+    renderLockerGrid();
+});
+
+function renderLockerGrid() {
+    const grid = document.getElementById('lockerGrid');
+    const rows = parseInt(document.getElementById('rows').value);
+    const columns = parseInt(document.getElementById('columns').value);
+    
+    grid.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+    grid.innerHTML = '';
+    
+    for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < columns; c++) {
+            const locker = lockers.find(l => l.row === r && l.column === c);
+            const cell = document.createElement('div');
+            cell.className = `locker-cell ${locker ? 'configured' : ''}`;
+            cell.innerHTML = `
+                <div>R${r+1}C${c+1}</div>
+                ${locker ? `
+                    <div>GPIO: ${locker.gpio_pin || 'Not Set'}</div>
+                    <div>Code: ${locker.unlock_code || 'Not Set'}</div>
+                ` : ''}
+            `;
+            cell.onclick = () => configureLocker(r, c, locker?.id);
+            grid.appendChild(cell);
+        }
+    }
+}
+
+function updateConfiguration() {
+    const rows = document.getElementById('rows').value;
+    const columns = document.getElementById('columns').value;
+    
+    fetch('/api/configure', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rows, columns })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            renderLockerGrid();
+        }
+    });
+}
+
+function configureLocker(row, column, id) {
+    document.getElementById('lockerId').value = id || '';
+    document.getElementById('lockerRow').value = row;
+    document.getElementById('lockerColumn').value = column;
+    
+    const locker = lockers.find(l => l.row === row && l.column === column);
+    if (locker) {
+        document.getElementById('gpioPin').value = locker.gpio_pin || '';
+        document.getElementById('unlockCode').value = locker.unlock_code || '';
+    } else {
+        document.getElementById('gpioPin').value = '';
+        document.getElementById('unlockCode').value = '';
+    }
+    
+    lockerModal.show();
+}
+
+function generateCode() {
+    document.getElementById('unlockCode').value = Math.random().toString(36).substring(2, 8).toUpperCase();
+}
+
+function saveLockerConfig() {
+    const id = document.getElementById('lockerId').value;
+    const row = parseInt(document.getElementById('lockerRow').value);
+    const column = parseInt(document.getElementById('lockerColumn').value);
+    const gpioPin = parseInt(document.getElementById('gpioPin').value);
+    const unlockCode = document.getElementById('unlockCode').value;
+    
+    fetch('/api/locker/configure', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            id: id || undefined,
+            row,
+            column,
+            gpio_pin: gpioPin,
+            generate_code: !unlockCode
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const existingLocker = lockers.find(l => l.row === row && l.column === column);
+            if (existingLocker) {
+                existingLocker.gpio_pin = gpioPin;
+                existingLocker.unlock_code = data.unlock_code;
+            } else {
+                lockers.push({
+                    id: id,
+                    row: row,
+                    column: column,
+                    gpio_pin: gpioPin,
+                    unlock_code: data.unlock_code
+                });
+            }
+            renderLockerGrid();
+            lockerModal.hide();
+        }
+    });
+}
+</script>
+{% endblock %}

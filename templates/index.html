@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h2 class="text-center">Package Retrieval</h2>
+            </div>
+            <div class="card-body">
+                <form id="unlockForm" class="text-center">
+                    <div class="mb-3">
+                        <label for="unlockCode" class="form-label">Enter Your Package Code</label>
+                        <input type="text" class="form-control" id="unlockCode" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Unlock Locker</button>
+                </form>
+                <div id="message" class="alert mt-3" style="display: none;"></div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById('unlockForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const code = document.getElementById('unlockCode').value;
+    const messageDiv = document.getElementById('message');
+
+    fetch('/unlock', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: `code=${encodeURIComponent(code)}`
+    })
+    .then(response => response.json())
+    .then(data => {
+        messageDiv.style.display = 'block';
+        messageDiv.className = `alert ${data.success ? 'alert-success' : 'alert-danger'}`;
+        messageDiv.textContent = data.message;
+        if (data.success) {
+            document.getElementById('unlockCode').value = '';
+        }
+    })
+    .catch(error => {
+        messageDiv.style.display = 'block';
+        messageDiv.className = 'alert alert-danger';
+        messageDiv.textContent = 'An error occurred. Please try again.';
+    });
+});
+</script>
+{% endblock %}
