@@ -51,7 +51,7 @@ sudo apt-get install -y python3-pip python3-venv chromium-browser unclutter git 
 
 2. Clone the repository:
 ```bash
-git clone https://github.com/yourusername/rpi-locker-mgmt.git
+git clone https://github.com/abenkorich/raspberry_pi_locker_mangement_system.git
 cd rpi-locker-mgmt
 ```
 
@@ -103,6 +103,6 @@ sudo systemctl status locker-system
 journalctl -u locker-system
 ```
 
-3. Make sure all permissions are correct:
+3. Make sure all permissions are correct, assuming the user is pi:
 ```bash
 sudo chown -R pi:pi /home/pi/rpi-locker-mgmt
