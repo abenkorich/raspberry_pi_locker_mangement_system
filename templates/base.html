@@ -32,6 +32,7 @@
             <a class="navbar-brand" href="/">Locker Management System</a>
             <div class="navbar-nav">
                 {% if current_user.is_authenticated %}
+                <a class="nav-link" href="/">Home</a>
                 <a class="nav-link" href="/admin">Admin Panel</a>
                 <a class="nav-link" href="/logout">Logout</a>
                 {% endif %}
