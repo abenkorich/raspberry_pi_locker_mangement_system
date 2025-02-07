@@ -54,9 +54,6 @@
                             <label for="gpioPin" class="form-label">GPIO Pin</label>
                             <select class="form-control" id="gpioPin">
                                 <option value="">Select GPIO Pin</option>
-                                {% for pin in range(2, 28) %}
-                                <option value="{{ pin }}">GPIO {{ pin }}</option>
-                                {% endfor %}
                             </select>
                         </div>
                         
@@ -134,6 +131,37 @@ function updateConfiguration() {
     });
 }
 
+function getUsedGPIOPins() {
+    const usedPins = new Set();
+    lockers.forEach(locker => {
+        if (locker.gpio_pin !== null) {
+            usedPins.add(locker.gpio_pin);
+        }
+    });
+    return usedPins;
+}
+
+function updateGPIOSelect(currentPin = null) {
+    const gpioSelect = document.getElementById('gpioPin');
+    const usedPins = getUsedGPIOPins();
+    
+    // Clear current options
+    gpioSelect.innerHTML = '<option value="">Select GPIO Pin</option>';
+    
+    // Add available GPIO pins
+    for (let pin = 2; pin <= 27; pin++) {
+        if (!usedPins.has(pin) || pin === currentPin) {
+            const option = document.createElement('option');
+            option.value = pin;
+            option.textContent = `GPIO ${pin}`;
+            if (pin === currentPin) {
+                option.selected = true;
+            }
+            gpioSelect.appendChild(option);
+        }
+    }
+}
+
 function configureLocker(row, column, id) {
     document.getElementById('lockerId').value = id || '';
     document.getElementById('lockerRow').value = row;
@@ -141,21 +169,42 @@ function configureLocker(row, column, id) {
     
     const locker = lockers.find(l => l.row === row && l.column === column);
     if (locker) {
-        document.getElementById('gpioPin').value = locker.gpio_pin || '';
+        updateGPIOSelect(locker.gpio_pin);
         document.getElementById('unlockCode').value = locker.unlock_code || '';
     } else {
-        document.getElementById('gpioPin').value = '';
+        updateGPIOSelect();
         document.getElementById('unlockCode').value = '';
     }
     
     lockerModal.show();
 }
 
-function generateCode() {
-    document.getElementById('unlockCode').value = Math.random().toString(36).substring(2, 8).toUpperCase();
+function validateLockerConfig() {
+    const gpioPin = document.getElementById('gpioPin').value;
+    const unlockCode = document.getElementById('unlockCode').value;
+    const errorMessages = [];
+
+    if (!gpioPin) {
+        errorMessages.push('Please select a GPIO pin');
+    }
+
+    if (!unlockCode) {
+        errorMessages.push('Please generate an unlock code');
+    }
+
+    if (errorMessages.length > 0) {
+        alert(errorMessages.join('\n'));
+        return false;
+    }
+
+    return true;
 }
 
 function saveLockerConfig() {
+    if (!validateLockerConfig()) {
+        return;
+    }
+
     const id = document.getElementById('lockerId').value || null;
     const row = parseInt(document.getElementById('lockerRow').value);
     const column = parseInt(document.getElementById('lockerColumn').value);
@@ -202,6 +251,11 @@ function saveLockerConfig() {
         alert('An error occurred while saving the configuration');
         console.error(error);
     });
+}
+
+function generateCode() {
+    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    document.getElementById('unlockCode').value = code;
 }
 </script>
 {% endblock %}
