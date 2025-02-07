@@ -47,7 +47,7 @@ def admin():
         'id': locker.id,
         'row': locker.row,
         'column': locker.column,
-        'gpio_pin': locker.gpio_config.pin_number if locker.gpio_config else None,
+        'gpio_pin': locker.gpio_pin,
         'unlock_code': locker.unlock_code,
         'is_occupied': locker.is_occupied
     } for locker in lockers]
@@ -118,8 +118,9 @@ def configure_locker():
         # Update locker properties
         locker.row = data['row']
         locker.column = data['column']
-        locker.name = data['name']
-        locker.status = data.get('status', 'available')
+        locker.gpio_pin = data['gpio_pin']
+        locker.unlock_code = data['unlock_code']
+        locker.is_occupied = data['is_occupied']
         
         db.session.add(locker)
         db.session.commit()
@@ -130,8 +131,9 @@ def configure_locker():
                 'id': locker.id,
                 'row': locker.row,
                 'column': locker.column,
-                'name': locker.name,
-                'status': locker.status
+                'gpio_pin': locker.gpio_pin,
+                'unlock_code': locker.unlock_code,
+                'is_occupied': locker.is_occupied
             }
         })
     except Exception as e:
