@@ -220,7 +220,7 @@ function saveLockerConfig() {
 }
 
 function generateCode() {
-    const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const code = Math.random().toString(16).substring(2, 8).toUpperCase();
     document.getElementById('unlockCode').value = code;
 }
 
