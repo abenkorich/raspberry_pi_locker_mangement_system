@@ -19,7 +19,7 @@ sudo apt-get install -y \
     unclutter \
     git \
     sqlite3 \
-    python3-rpi.gpio
+    python3-lgpio
 
 # Create project directory
 echo "Setting up project directory..."
@@ -47,17 +47,17 @@ source venv/bin/activate
 
 # Install Python dependencies
 echo "Installing Python dependencies..."
-sudo pip install --upgrade pip
-sudo pip install -r requirements.txt
+pip install --upgrade pip
+pip install -r requirements.txt
 
 # Set up autostart
 echo "Setting up autostart..."
-sudo mkdir -p $USER_HOME/.config/autostart
-sudo cp locker-kiosk.desktop $USER_HOME/.config/autostart/
+mkdir -p $USER_HOME/.config/autostart
+cp locker-kiosk.desktop $USER_HOME/.config/autostart/
 
 # Make scripts executable
 echo "Setting up executable permissions..."
-sudo chmod +x start_kiosk.sh
+chmod +x start_kiosk.sh
 
 # Configure display settings
 echo "Configuring display settings..."

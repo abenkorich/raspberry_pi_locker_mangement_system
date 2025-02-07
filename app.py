@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
 from flask_login import LoginManager, login_user, login_required, logout_user, current_user
-import RPi.GPIO as GPIO
+import lgpio
 from models import db, User, Locker, Configuration
 import random
 import string
@@ -17,8 +17,8 @@ login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = 'login'
 
-# GPIO Setup
-GPIO.setmode(GPIO.BCM)
+# Initialize GPIO
+h = lgpio.gpiochip_open(0)
 active_pins = []
 
 @login_manager.user_loader
@@ -29,10 +29,9 @@ def generate_unlock_code():
     return ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
 
 def setup_gpio():
-    GPIO.setwarnings(False)
     for pin in active_pins:
-        GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.HIGH)  # Locks are typically active-low
+        lgpio.gpio_claim_output(h, pin)
+        lgpio.gpio_write(h, pin, 1)  # Initialize to locked state
 
 @app.route('/')
 def index():
@@ -66,16 +65,19 @@ def login():
 @app.route('/unlock', methods=['POST'])
 def unlock():
     code = request.form.get('code')
-    locker = Locker.query.filter_by(unlock_code=code).first()
+    if not code:
+        return jsonify({'success': False, 'message': 'No code provided'})
     
+    locker = Locker.query.filter_by(unlock_code=code).first()
     if not locker:
         return jsonify({'success': False, 'message': 'Invalid code'})
     
     if locker.gpio_pin:
-        GPIO.output(locker.gpio_pin, GPIO.LOW)  # Unlock
+        lgpio.gpio_claim_output(h, locker.gpio_pin)
+        lgpio.gpio_write(h, locker.gpio_pin, 0)  # Unlock
         import time
-        time.sleep(5)  # Keep unlocked for 5 seconds
-        GPIO.output(locker.gpio_pin, GPIO.HIGH)  # Lock
+        time.sleep(2)  # Keep unlocked for 2 seconds
+        lgpio.gpio_write(h, locker.gpio_pin, 1)  # Lock
     
     return jsonify({'success': True, 'message': f'Locker {locker.row}-{locker.column} unlocked'})
 
@@ -156,4 +158,4 @@ if __name__ == '__main__':
         app.run(host='0.0.0.0', port=5000)
     except KeyboardInterrupt:
         # Clean shutdown
-        GPIO.cleanup()
+        lgpio.gpiochip_close(h)
