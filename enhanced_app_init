@@ -121,7 +121,20 @@ def update_locker():
         conn.commit()
 
     return jsonify({'status': 'success', 'unlock_code': unlock_code})
+@app.route('/update_locker_size', methods=['POST'])
+def update_locker_size():
+    if 'admin' not in session:
+        return redirect(url_for('admin'))
 
+    rows = int(request.form.get('rows'))
+    columns = int(request.form.get('columns'))
+
+    with sqlite3.connect('locker.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO locker_config (rows, columns) VALUES (?, ?)", (rows, columns))
+        conn.commit()
+
+    return redirect(url_for('admin_panel'))
 @app.route('/logout')
 def logout():
     session.pop('admin', None)
@@ -202,6 +215,18 @@ cat > "${TEMPLATES_DIR}/admin_panel.html" <<EOF
 </head>
 <body>
   <h1>Admin Panel</h1>
+
+  <h2>Locker Matrix Configuration</h2>
+  <form action="/update_locker_size" method="POST">
+    <label for="rows">Rows:</label>
+    <input type="number" id="rows" name="rows" value="{{ rows }}" min="1" required>
+    
+    <label for="columns">Columns:</label>
+    <input type="number" id="columns" name="columns" value="{{ columns }}" min="1" required>
+    
+    <button type="submit">Save Configuration</button>
+  </form>
+
   <div style="display: grid; grid-template-columns: repeat({{ columns }}, 50px); gap: 10px; margin-top: 20px;">
     {% for row in range(1, rows + 1) %}
       {% for col in range(1, columns + 1) %}
