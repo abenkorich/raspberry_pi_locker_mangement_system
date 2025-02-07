@@ -30,9 +30,20 @@ def generate_unlock_code():
 
 def setup_gpio():
     GPIO.setwarnings(False)
+    # Get all allocated GPIO pins from the database
+    allocated_pins = [locker.gpio_pin for locker in Locker.query.filter(Locker.gpio_pin.isnot(None)).all()]
+    
+    # Remove any pins that are no longer in use
+    global active_pins
+    active_pins = list(set(allocated_pins))
+    
+    # Setup all active pins
     for pin in active_pins:
-        GPIO.setup(pin, GPIO.OUT)
-        GPIO.output(pin, GPIO.HIGH)  # Locks are typically active-low
+        try:
+            GPIO.setup(pin, GPIO.OUT)
+            GPIO.output(pin, GPIO.HIGH)  # Locks are typically active-low
+        except Exception as e:
+            print(f"Error setting up GPIO pin {pin}: {str(e)}")
 
 @app.route('/')
 def index():
@@ -119,18 +130,29 @@ def configure_locker():
             )
             db.session.add(locker)
     
-    if 'gpio_pin' in data:
-        if locker.gpio_pin in active_pins:
-            active_pins.remove(locker.gpio_pin)
-        locker.gpio_pin = data['gpio_pin']
-        if data['gpio_pin']:  # Only add to active_pins if a pin is actually set
-            active_pins.append(data['gpio_pin'])
-            setup_gpio()
-    
-    if 'generate_code' in data and data['generate_code']:
-        locker.unlock_code = generate_unlock_code()
-    
     try:
+        if 'gpio_pin' in data:
+            # Remove old pin from active pins if it exists
+            if locker.gpio_pin in active_pins:
+                active_pins.remove(locker.gpio_pin)
+                try:
+                    GPIO.cleanup(locker.gpio_pin)
+                except:
+                    pass
+            
+            # Set and setup new pin
+            locker.gpio_pin = data['gpio_pin']
+            if data['gpio_pin']:
+                try:
+                    GPIO.setup(data['gpio_pin'], GPIO.OUT)
+                    GPIO.output(data['gpio_pin'], GPIO.HIGH)
+                    active_pins.append(data['gpio_pin'])
+                except Exception as e:
+                    return jsonify({'success': False, 'message': f'Failed to setup GPIO pin: {str(e)}'})
+        
+        if 'generate_code' in data and data['generate_code']:
+            locker.unlock_code = generate_unlock_code()
+        
         db.session.commit()
         return jsonify({
             'success': True,
