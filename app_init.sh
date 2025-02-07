@@ -212,5 +212,8 @@ EOF
 # Initialize SQLite database
 echo "Initializing SQLite database..."
 sqlite3 locker.db < schema.sql
+sqlite3 INSERT INTO lockers (gpio_pin, assigned_code) VALUES (5, 'ABC123');
+sqlite3 INSERT INTO lockers (gpio_pin, assigned_code) VALUES (6, 'DEF456');
+sqlite3 INSERT INTO admin (username, password) VALUES ('admin', '1234');
 
 echo "Project setup complete."
