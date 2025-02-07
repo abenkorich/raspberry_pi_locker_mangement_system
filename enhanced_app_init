@@ -1,0 +1,229 @@
+#!/bin/bash
+
+# Define project structure
+PROJECT_DIR="locker_management_system"
+DB_FILE="${PROJECT_DIR}/locker.db"
+SCHEMA_FILE="${PROJECT_DIR}/schema.sql"
+APP_FILE="${PROJECT_DIR}/app.py"
+STATIC_DIR="${PROJECT_DIR}/static"
+TEMPLATES_DIR="${PROJECT_DIR}/templates"
+
+echo "Creating project structure..."
+mkdir -p "${PROJECT_DIR}" "${STATIC_DIR}" "${TEMPLATES_DIR}"
+
+echo "Generating database schema..."
+cat > "${SCHEMA_FILE}" <<EOF
+CREATE TABLE lockers (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    row INTEGER NOT NULL,
+    col INTEGER NOT NULL,
+    gpio_pin INTEGER NOT NULL,
+    assigned_code TEXT NOT NULL
+);
+
+CREATE TABLE admin (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL
+);
+
+CREATE TABLE locker_config (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    rows INTEGER NOT NULL,
+    columns INTEGER NOT NULL
+);
+
+INSERT INTO admin (username, password) VALUES ('admin', 'admin123');
+EOF
+
+echo "Initializing SQLite database..."
+sqlite3 "${DB_FILE}" < "${SCHEMA_FILE}"
+
+echo "Creating Python application file..."
+cat > "${APP_FILE}" <<EOF
+from flask import Flask, render_template, request, redirect, url_for, session, jsonify
+import RPi.GPIO as GPIO
+import time
+import sqlite3
+import random
+import string
+
+app = Flask(__name__)
+app.secret_key = 'your_secret_key'
+
+GPIO.setmode(GPIO.BCM)
+
+def setup_locker_pins():
+    with sqlite3.connect('locker.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT gpio_pin FROM lockers")
+        pins = [row[0] for row in cursor.fetchall()]
+    for pin in pins:
+        GPIO.setup(pin, GPIO.OUT)
+        GPIO.output(pin, GPIO.LOW)
+
+def generate_random_code(length=8):
+    return ''.join(random.choices(string.ascii_uppercase + string.digits, k=length))
+
+@app.route('/')
+def home():
+    return render_template('index.html')
+
+@app.route('/admin', methods=['GET', 'POST'])
+def admin():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        with sqlite3.connect('locker.db') as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM admin WHERE username = ? AND password = ?", (username, password))
+            if cursor.fetchone():
+                session['admin'] = True
+                return redirect(url_for('admin_panel'))
+        return render_template('admin.html', error="Invalid username or password.")
+    return render_template('admin.html')
+
+@app.route('/admin_panel')
+def admin_panel():
+    if 'admin' not in session:
+        return redirect(url_for('admin'))
+
+    with sqlite3.connect('locker.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT rows, columns FROM locker_config ORDER BY id DESC LIMIT 1")
+        config = cursor.fetchone()
+        if config:
+            rows, columns = config
+        else:
+            rows, columns = 0, 0
+
+        cursor.execute("SELECT id, row, col, gpio_pin, assigned_code FROM lockers")
+        lockers = cursor.fetchall()
+
+    return render_template('admin_panel.html', rows=rows, columns=columns, lockers=lockers)
+
+@app.route('/update_locker', methods=['POST'])
+def update_locker():
+    if 'admin' not in session:
+        return redirect(url_for('admin'))
+
+    row = int(request.form.get('row'))
+    col = int(request.form.get('col'))
+    gpio_pin = int(request.form.get('gpio_pin'))
+    unlock_code = generate_random_code()
+
+    with sqlite3.connect('locker.db') as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT OR REPLACE INTO lockers (row, col, gpio_pin, assigned_code) VALUES (?, ?, ?, ?)",
+            (row, col, gpio_pin, unlock_code)
+        )
+        conn.commit()
+
+    return jsonify({'status': 'success', 'unlock_code': unlock_code})
+
+@app.route('/logout')
+def logout():
+    session.pop('admin', None)
+    return redirect(url_for('home'))
+
+if __name__ == '__main__':
+    setup_locker_pins()
+    app.run(host='0.0.0.0', port=5000)
+EOF
+
+echo "Creating static and template files..."
+cat > "${TEMPLATES_DIR}/index.html" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Locker Management System</title>
+</head>
+<body>
+  <h1>Welcome to the Locker Management System</h1>
+  <a href="/admin">Go to Admin Panel</a>
+</body>
+</html>
+EOF
+
+cat > "${TEMPLATES_DIR}/admin.html" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Login</title>
+</head>
+<body>
+  <h1>Admin Login</h1>
+  <form action="/admin" method="POST">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" required><br>
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required><br>
+    <button type="submit">Login</button>
+  </form>
+  {% if error %}
+  <p style="color: red;">{{ error }}</p>
+  {% endif %}
+</body>
+</html>
+EOF
+
+cat > "${TEMPLATES_DIR}/admin_panel.html" <<EOF
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Panel</title>
+  <script>
+    async function configureLocker(row, col) {
+      const gpioPin = prompt(\`Enter GPIO pin for locker at Row \${row}, Col \${col}:\`);
+      if (gpioPin) {
+        const response = await fetch('/update_locker', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: \`row=\${row}&col=\${col}&gpio_pin=\${gpioPin}\`
+        });
+
+        const result = await response.json();
+        if (result.status === 'success') {
+          alert(\`Locker configured! Unlock Code: \${result.unlock_code}\`);
+          location.reload();
+        } else {
+          alert('Failed to configure locker.');
+        }
+      }
+    }
+  </script>
+</head>
+<body>
+  <h1>Admin Panel</h1>
+  <div style="display: grid; grid-template-columns: repeat({{ columns }}, 50px); gap: 10px; margin-top: 20px;">
+    {% for row in range(1, rows + 1) %}
+      {% for col in range(1, columns + 1) %}
+        <button onclick="configureLocker({{ row }}, {{ col }})" style="width: 50px; height: 50px;">
+          {% set locker = lockers | selectattr("0", "equalto", row) | selectattr("1", "equalto", col) | first %}
+          {% if locker %}
+            Pin: {{ locker[3] }}
+          {% else %}
+            Empty
+          {% endif %}
+        </button>
+      {% endfor %}
+    {% endfor %}
+  </div>
+
+  <a href="/logout">Logout</a>
+</body>
+</html>
+EOF
+
+echo "Installing dependencies..."
+pip3 install flask RPi.GPIO
+
+echo "Setup complete! Run the server with:"
+echo "cd ${PROJECT_DIR} && python3 app.py"
