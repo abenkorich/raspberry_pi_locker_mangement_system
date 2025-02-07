@@ -17,7 +17,7 @@ A smart locker management system built for Raspberry Pi 5, featuring an admin in
 
 1. Download the setup script:
 ```bash
-wget https://raw.githubusercontent.com/yourusername/rpi-locker-mgmt/main/raspberry_pi_locker_mangement_system/setup.sh
+wget https://raw.githubusercontent.com/abenkorich/raspberry_pi_locker_mangement_system/main/setup.sh
 ```
 
 2. Make it executable:
