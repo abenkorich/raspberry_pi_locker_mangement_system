@@ -25,9 +25,9 @@ wget https://raw.githubusercontent.com/abenkorich/raspberry_pi_locker_mangement_
 chmod +x setup.sh
 ```
 
-3. Run the setup script:
+3. Run the setup script with sudo:
 ```bash
-./setup.sh
+sudo ./setup.sh
 ```
 
 The setup script will automatically:
@@ -37,6 +37,7 @@ The setup script will automatically:
 - Set up auto-start in kiosk mode
 - Configure the display settings
 - Create necessary system services
+- Set proper permissions for all files
 
 After the setup is complete, just reboot your Raspberry Pi and the system will start automatically.
 
@@ -52,7 +53,7 @@ sudo apt-get install -y python3-pip python3-venv chromium-browser unclutter git 
 2. Clone the repository:
 ```bash
 git clone https://github.com/abenkorich/raspberry_pi_locker_mangement_system.git
-cd rpi-locker-mgmt
+cd raspberry_pi_locker_mangement_system
 ```
 
 3. Create and activate virtual environment:
@@ -92,6 +93,18 @@ The system allows configuration of GPIO pins through the admin interface. Make s
 
 ## Troubleshooting
 
+If you encounter permission errors during setup:
+1. Make sure to run the setup script with sudo:
+```bash
+sudo ./setup.sh
+```
+
+2. If files have wrong permissions after setup:
+```bash
+# Replace 'yourusername' with your actual username
+sudo chown -R yourusername:yourusername ~/raspberry_pi_locker_mangement_system
+```
+
 If the system doesn't start automatically after reboot:
 1. Check the service status:
 ```bash
@@ -100,9 +113,9 @@ sudo systemctl status locker-system
 
 2. Check the logs:
 ```bash
-journalctl -u locker-system
+sudo journalctl -u locker-system
 ```
 
-3. Make sure all permissions are correct, assuming the user is pi:
+3. Check file permissions:
 ```bash
-sudo chown -R pi:pi /home/pi/rpi-locker-mgmt
+ls -la ~/raspberry_pi_locker_mangement_system
