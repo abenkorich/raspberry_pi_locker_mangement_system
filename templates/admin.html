@@ -56,6 +56,14 @@
                                 <option value="">Select GPIO Pin</option>
                             </select>
                         </div>
+
+                        <div class="mb-3">
+                            <label for="gpioPin" class="form-label">Status</label>
+                            <select class="form-control" id="isOccupied">
+                                <option value="1">Occupied</option>
+                                <option value="0">Empty</option>
+                            </select>
+                        </div>
                         
                         <div class="mb-3">
                             <label class="form-label">Unlock Code</label>
@@ -165,6 +173,7 @@ function saveLockerConfig() {
     const column = parseInt(document.getElementById('lockerColumn').value);
     const gpioPin = parseInt(document.getElementById('gpioPin').value) || null;
     const unlockCode = document.getElementById('unlockCode').value;
+    const isOccupied = document.getElementById('isOccupied').value;
     
     fetch('/api/locker/configure', {
         method: 'POST',
@@ -176,7 +185,8 @@ function saveLockerConfig() {
             row,
             column,
             gpio_pin: gpioPin,
-            generate_code: !unlockCode
+            unlock_code: unlockCode,
+            is_occupied: isOccupied
         })
     })
     .then(response => response.json())
@@ -188,7 +198,8 @@ function saveLockerConfig() {
                 row: row,
                 column: column,
                 gpio_pin: gpioPin,
-                unlock_code: data.unlock_code
+                unlock_code: data.unlock_code,
+                is_occupied: isOccupied
             };
             
             if (existingLockerIndex !== -1) {

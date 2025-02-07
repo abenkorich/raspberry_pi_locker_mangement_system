@@ -120,7 +120,7 @@ def configure_locker():
         locker.column = data['column']
         locker.gpio_pin = data['gpio_pin']
         locker.unlock_code = data['unlock_code']
-        locker.is_occupied = data['is_occupied']
+        locker.is_occupied = bool(data['is_occupied'])
         
         db.session.add(locker)
         db.session.commit()
