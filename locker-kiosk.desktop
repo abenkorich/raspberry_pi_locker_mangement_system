@@ -1,0 +1,5 @@
+[Desktop Entry]
+Type=Application
+Name=Locker Kiosk
+Exec=/home/pi/rpi-locker-mgmt/raspberry_pi_locker_mangement_system/start_kiosk.sh
+X-GNOME-Autostart-enabled=true

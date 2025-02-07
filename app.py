@@ -151,4 +151,9 @@ if __name__ == '__main__':
             db.session.commit()
     
     setup_gpio()
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    try:
+        # Run in production mode
+        app.run(host='0.0.0.0', port=5000)
+    except KeyboardInterrupt:
+        # Clean shutdown
+        GPIO.cleanup()
