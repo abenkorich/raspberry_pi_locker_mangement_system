@@ -33,11 +33,11 @@ cd $PROJECT_DIR
 # Clone repository if not exists
 if [ ! -d "raspberry_pi_locker_mangement_system" ]; then
     echo "Cloning project repository..."
-    git clone https://github.com/abenkorich/raspberry_pi_locker_mangement_system.git .
+    sudo git clone https://github.com/abenkorich/raspberry_pi_locker_mangement_system.git .
 else
     echo "Project directory already exists, updating..."
     cd raspberry_pi_locker_mangement_system
-    git pull
+    sudo git pull
 fi
 
 # Create and activate virtual environment
