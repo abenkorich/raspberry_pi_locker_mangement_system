@@ -24,7 +24,7 @@ sudo apt-get install -y \
 # Create project directory
 echo "Setting up project directory..."
 USER_HOME="$(eval echo ~$USER)"
-PROJECT_DIR="$USER_HOME/bd-rpi-locker-mgmt"
+PROJECT_DIR="$USER_HOME/raspberry_pi_locker_mangement_system"
 if [ ! -d "$PROJECT_DIR" ]; then
     sudo mkdir -p $PROJECT_DIR
 fi
@@ -73,9 +73,9 @@ After=network.target
 
 [Service]
 User=pi
-WorkingDirectory=$USER_HOME/bd-rpi-locker-mgmt/raspberry_pi_locker_mangement_system
-Environment="PATH=$USER_HOME/bd-rpi-locker-mgmt/raspberry_pi_locker_mangement_system/venv/bin"
-ExecStart=$USER_HOME/bd-rpi-locker-mgmt/raspberry_pi_locker_mangement_system/venv/bin/python -m flask run --host=0.0.0.0
+WorkingDirectory=$USER_HOME/raspberry_pi_locker_mangement_system/raspberry_pi_locker_mangement_system
+Environment="PATH=$USER_HOME/raspberry_pi_locker_mangement_system/raspberry_pi_locker_mangement_system/venv/bin"
+ExecStart=$USER_HOME/raspberry_pi_locker_mangement_system/raspberry_pi_locker_mangement_system/venv/bin/python -m flask run --host=0.0.0.0
 
 [Install]
 WantedBy=multi-user.target
@@ -103,7 +103,7 @@ EOF
 # Final setup
 echo "Performing final setup..."
 # Set correct permissions
-sudo chown -R pi:pi $USER_HOME/bd-rpi-locker-mgmt
+sudo chown -R pi:pi $USER_HOME/raspberry_pi_locker_mangement_system
 
 echo "Setup complete! Please reboot your Raspberry Pi."
 echo "After reboot, the system will automatically start in kiosk mode."
