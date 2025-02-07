@@ -43,7 +43,15 @@ def index():
 def admin():
     config = Configuration.query.first()
     lockers = Locker.query.all()
-    return render_template('admin.html', config=config, lockers=lockers)
+    locker_list = [{
+        'id': locker.id,
+        'row': locker.row,
+        'column': locker.column,
+        'gpio_pin': locker.gpio_pin,
+        'unlock_code': locker.unlock_code,
+        'is_occupied': locker.is_occupied
+    } for locker in lockers]
+    return render_template('admin.html', config=config, lockers=locker_list)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
