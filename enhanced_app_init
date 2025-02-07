@@ -110,7 +110,7 @@ def update_locker():
     row = int(request.form.get('row'))
     col = int(request.form.get('col'))
     gpio_pin = int(request.form.get('gpio_pin'))
-    unlock_code = generate_random_code()
+    unlock_code = request.form.get('unlock_code')
 
     with sqlite3.connect('locker.db') as conn:
         cursor = conn.cursor()
@@ -120,7 +120,8 @@ def update_locker():
         )
         conn.commit()
 
-    return jsonify({'status': 'success', 'unlock_code': unlock_code})
+    return jsonify({'status': 'success'})
+
 @app.route('/update_locker_size', methods=['POST'])
 def update_locker_size():
     if 'admin' not in session:
@@ -194,39 +195,63 @@ cat > "${TEMPLATES_DIR}/admin_panel.html" <<EOF
   <title>Admin Panel</title>
   <script>
     async function configureLocker(row, col) {
-      const gpioPin = prompt(\`Enter GPIO pin for locker at Row \${row}, Col \${col}:\`);
-      if (gpioPin) {
-        const response = await fetch('/update_locker', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: \`row=\${row}&col=\${col}&gpio_pin=\${gpioPin}\`
-        });
+      const pins = [2, 3, 4, 17, 27, 22, 10, 9, 11, 5]; // Example available GPIO pins
+      let pinOptions = pins.map(pin => `<option value="${pin}">${pin}</option>`).join('');
+      
+      const formHTML = `
+        <form id="lockerForm">
+          <label for="gpio_pin">Select GPIO Pin:</label>
+          <select id="gpio_pin" name="gpio_pin">${pinOptions}</select><br><br>
 
-        const result = await response.json();
-        if (result.status === 'success') {
-          alert(\`Locker configured! Unlock Code: \${result.unlock_code}\`);
-          location.reload();
-        } else {
-          alert('Failed to configure locker.');
-        }
+          <label for="unlock_code">Unlock Code:</label>
+          <input type="text" id="unlock_code" name="unlock_code" readonly><br><br>
+
+          <button type="button" onclick="generateNewCode()">Generate New Code</button>
+          <br><br>
+          <button type="button" onclick="saveLockerConfig(${row}, ${col})">Save Configuration</button>
+        </form>
+      `;
+
+      const popupWindow = window.open('', 'Locker Config', 'width=300,height=300');
+      popupWindow.document.write(formHTML);
+      popupWindow.document.close();
+    }
+
+    async function generateNewCode() {
+      const unlockCode = Array.from({ length: 8 }, () =>
+        Math.random().toString(36).charAt(2).toUpperCase()
+      ).join('');
+      document.getElementById('unlock_code').value = unlockCode;
+    }
+
+    async function saveLockerConfig(row, col) {
+      const gpioPin = document.getElementById('gpio_pin').value;
+      const unlockCode = document.getElementById('unlock_code').value;
+
+      if (!gpioPin || !unlockCode) {
+        alert('Please generate a code and select a pin before saving.');
+        return;
+      }
+
+      const response = await fetch('/update_locker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `row=${row}&col=${col}&gpio_pin=${gpioPin}&unlock_code=${unlockCode}`
+      });
+
+      const result = await response.json();
+      if (result.status === 'success') {
+        alert('Locker configuration saved!');
+        window.opener.location.reload();
+        window.close();
+      } else {
+        alert('Failed to save configuration.');
       }
     }
   </script>
 </head>
 <body>
   <h1>Admin Panel</h1>
-
-  <h2>Locker Matrix Configuration</h2>
-  <form action="/update_locker_size" method="POST">
-    <label for="rows">Rows:</label>
-    <input type="number" id="rows" name="rows" value="{{ rows }}" min="1" required>
-    
-    <label for="columns">Columns:</label>
-    <input type="number" id="columns" name="columns" value="{{ columns }}" min="1" required>
-    
-    <button type="submit">Save Configuration</button>
-  </form>
-
   <div style="display: grid; grid-template-columns: repeat({{ columns }}, 50px); gap: 10px; margin-top: 20px;">
     {% for row in range(1, rows + 1) %}
       {% for col in range(1, columns + 1) %}
