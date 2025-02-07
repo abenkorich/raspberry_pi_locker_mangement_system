@@ -1,21 +1,106 @@
 {% extends "base.html" %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-md-6">
-        <div class="card">
-            <div class="card-header">
-                <h2 class="text-center">Package Retrieval</h2>
-            </div>
-            <div class="card-body">
-                <form id="unlockForm" class="text-center">
-                    <div class="mb-3">
-                        <label for="unlockCode" class="form-label">Enter Your Package Code</label>
-                        <input type="text" class="form-control" id="unlockCode" required>
-                    </div>
-                    <button type="submit" class="btn btn-primary">Unlock Locker</button>
-                </form>
-                <div id="message" class="alert mt-3" style="display: none;"></div>
+<style>
+    .keypad-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .keypad-button {
+        width: 60px;
+        height: 60px;
+        margin: 5px;
+        font-size: 24px;
+        border-radius: 10px;
+        border: 1px solid #ccc;
+        background-color: #f8f9fa;
+        transition: all 0.2s;
+    }
+    .keypad-button:active {
+        background-color: #0d6efd;
+        color: white;
+        transform: scale(0.95);
+    }
+    .keypad-row {
+        display: flex;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+    .input-display {
+        font-size: 24px;
+        height: 50px;
+        text-align: center;
+        letter-spacing: 2px;
+        font-family: monospace;
+    }
+    .keypad-section {
+        padding: 15px;
+    }
+</style>
+
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="text-center">Package Retrieval</h2>
+                </div>
+                <div class="card-body">
+                    <form id="unlockForm" class="text-center">
+                        <div class="mb-4">
+                            <label for="unlockCode" class="form-label">Enter Your Package Code</label>
+                            <input type="text" class="form-control input-display" id="unlockCode" readonly required>
+                        </div>
+                        
+                        <div class="keypad-container">
+                            <div class="row">
+                                <!-- Letters Keypad (Left) -->
+                                <div class="col-md-6 keypad-section">
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button">A</button>
+                                        <button type="button" class="keypad-button">B</button>
+                                        <button type="button" class="keypad-button">C</button>
+                                    </div>
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button">D</button>
+                                        <button type="button" class="keypad-button">E</button>
+                                        <button type="button" class="keypad-button">F</button>
+                                    </div>
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button">G</button>
+                                        <button type="button" class="keypad-button">H</button>
+                                        <button type="button" class="keypad-button">I</button>
+                                    </div>
+                                </div>
+                                
+                                <!-- Numbers Keypad (Right) -->
+                                <div class="col-md-6 keypad-section">
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button">1</button>
+                                        <button type="button" class="keypad-button">2</button>
+                                        <button type="button" class="keypad-button">3</button>
+                                    </div>
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button">4</button>
+                                        <button type="button" class="keypad-button">5</button>
+                                        <button type="button" class="keypad-button">6</button>
+                                    </div>
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button">7</button>
+                                        <button type="button" class="keypad-button">8</button>
+                                        <button type="button" class="keypad-button">9</button>
+                                    </div>
+                                    <div class="keypad-row">
+                                        <button type="button" class="keypad-button" id="clearBtn">C</button>
+                                        <button type="button" class="keypad-button">0</button>
+                                        <button type="button" class="keypad-button btn-primary" id="submitBtn">✓</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                    <div id="message" class="alert mt-3" style="display: none;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -24,31 +109,62 @@
 
 {% block scripts %}
 <script>
-document.getElementById('unlockForm').addEventListener('submit', function(e) {
-    e.preventDefault();
-    const code = document.getElementById('unlockCode').value;
+document.addEventListener('DOMContentLoaded', function() {
+    const unlockCode = document.getElementById('unlockCode');
     const messageDiv = document.getElementById('message');
+    const form = document.getElementById('unlockForm');
+    
+    // Handle keypad button clicks
+    document.querySelectorAll('.keypad-button').forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            const value = this.textContent;
+            
+            if (this.id === 'clearBtn') {
+                unlockCode.value = '';
+            } else if (this.id === 'submitBtn') {
+                form.dispatchEvent(new Event('submit'));
+            } else {
+                if (unlockCode.value.length < 6) {  // Limit to 6 characters
+                    unlockCode.value += value;
+                }
+            }
+        });
+    });
 
-    fetch('/unlock', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-        },
-        body: `code=${encodeURIComponent(code)}`
-    })
-    .then(response => response.json())
-    .then(data => {
-        messageDiv.style.display = 'block';
-        messageDiv.className = `alert ${data.success ? 'alert-success' : 'alert-danger'}`;
-        messageDiv.textContent = data.message;
-        if (data.success) {
-            document.getElementById('unlockCode').value = '';
+    // Handle form submission
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const code = unlockCode.value;
+        
+        if (code.length === 0) {
+            messageDiv.style.display = 'block';
+            messageDiv.className = 'alert alert-warning';
+            messageDiv.textContent = 'Please enter a code';
+            return;
         }
-    })
-    .catch(error => {
-        messageDiv.style.display = 'block';
-        messageDiv.className = 'alert alert-danger';
-        messageDiv.textContent = 'An error occurred. Please try again.';
+
+        fetch('/unlock', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+            },
+            body: `code=${encodeURIComponent(code)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            messageDiv.style.display = 'block';
+            messageDiv.className = `alert ${data.success ? 'alert-success' : 'alert-danger'}`;
+            messageDiv.textContent = data.message;
+            if (data.success) {
+                unlockCode.value = '';
+            }
+        })
+        .catch(error => {
+            messageDiv.style.display = 'block';
+            messageDiv.className = 'alert alert-danger';
+            messageDiv.textContent = 'An error occurred. Please try again.';
+        });
     });
 });
 </script>
