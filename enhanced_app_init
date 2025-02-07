@@ -198,8 +198,7 @@ cat > "${TEMPLATES_DIR}/admin_panel.html" <<EOF
       const pins = [2, 3, 4, 17, 27, 22, 10, 9, 11, 5]; // Example available GPIO pins
       let pinOptions = pins.map(pin => `<option value="${pin}">${pin}</option>`).join('');
       
-      const formHTML = `
-        <form id="lockerForm">
+      const formHTML = `<form id="lockerForm">
           <label for="gpio_pin">Select GPIO Pin:</label>
           <select id="gpio_pin" name="gpio_pin">${pinOptions}</select><br><br>
 
@@ -209,8 +208,7 @@ cat > "${TEMPLATES_DIR}/admin_panel.html" <<EOF
           <button type="button" onclick="generateNewCode()">Generate New Code</button>
           <br><br>
           <button type="button" onclick="saveLockerConfig(${row}, ${col})">Save Configuration</button>
-        </form>
-      `;
+        </form>`;
 
       const popupWindow = window.open('', 'Locker Config', 'width=300,height=300');
       popupWindow.document.write(formHTML);
@@ -252,6 +250,19 @@ cat > "${TEMPLATES_DIR}/admin_panel.html" <<EOF
 </head>
 <body>
   <h1>Admin Panel</h1>
+
+  <h2>Locker Size Configuration</h2>
+  <form action="/update_locker_size" method="POST">
+    <label for="rows">Rows:</label>
+    <input type="number" id="rows" name="rows" value="{{ rows }}" min="1" required>
+    
+    <label for="columns">Columns:</label>
+    <input type="number" id="columns" name="columns" value="{{ columns }}" min="1" required>
+    
+    <button type="submit">Save Configuration</button>
+  </form>
+
+   <h2>Lockers Configuration</h2>
   <div style="display: grid; grid-template-columns: repeat({{ columns }}, 50px); gap: 10px; margin-top: 20px;">
     {% for row in range(1, rows + 1) %}
       {% for col in range(1, columns + 1) %}
