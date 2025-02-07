@@ -34,6 +34,7 @@ CREATE TABLE locker_config (
 );
 
 INSERT INTO admin (username, password) VALUES ('admin', 'admin123');
+INSERT INTO locker_config (rows, columns) VALUES (5, 5);
 EOF
 
 echo "Initializing SQLite database..."
