@@ -42,7 +42,13 @@ fi
 
 # Create and activate virtual environment
 echo "Setting up Python virtual environment..."
+
+# -m venv creates a virtual environment in the directory "venv"
 python3 -m venv venv
+
+# Wait until the virtual environment is created
+while [ ! -d "venv" ]; do sleep 1; done
+
 source venv/bin/activate
 
 # Install Python dependencies
